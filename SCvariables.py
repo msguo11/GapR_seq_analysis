@@ -72,6 +72,37 @@ def reading_gbk_new(gbk_file, features_to_extract):
     
     return genome    
 
+genome_folder = './data/scer/'
+genomefasta = {}
+for i in range(1,10):
+    x = loading_fasta_gbk(genome_folder + 'chr0{}.fsa'.format(i),'fasta')
+    genomefasta[x.name] = x
+for i in range(10,17):
+    x = loading_fasta_gbk(genome_folder + 'chr{}.fsa'.format(i),'fasta')
+    genomefasta[x.name] = x
+
+l = {}
+for c in ['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII','XIII','XIV','XV','XVI']:
+    chrom = 'chr'+c
+    l[chrom]=len(genomefasta[chrom].seq)
+
+la = {'chrI': 0,
+ 'chrII': 230218,
+ 'chrIII': 1043402,
+ 'chrIV': 1360022,
+ 'chrV': 2891955,
+ 'chrVI': 3468829,
+ 'chrVII': 3738990,
+ 'chrVIII': 4829930,
+ 'chrIX': 5392573,
+ 'chrX': 5832461,
+ 'chrXI': 6578212,
+ 'chrXII': 7245028,
+ 'chrXIII': 8323205,
+ 'chrXIV': 9247636,
+ 'chrXV': 10031969,
+ 'chrXVI': 11123260}
+
 ##calculating ATcontent
 def ATcontent(genome, start, end):
     content=100-(GC(genome.seq[start:end]))
@@ -165,6 +196,13 @@ def downloadGEO(filename):
         os.system("wget -P ./data/ https://ftp.ncbi.nlm.nih.gov/geo/samples/{}nnn/{}/suppl/{}.gz".format(f[0][:-3],f[0],filename))
         print('unzipping {}.gz'.format(filename))
         os.system('gzip -d ./data/{}.gz'.format(filename))
+        
+def downloadMNase(filename = 'GSM3069971_MNase_YPD30_WT-B_166_40U.sgr'):
+    downloadGEO(filename)
+    mnase = pd.read_csv('./data/GSM3069971_MNase_YPD30_WT-B_166_40U.sgr',sep = '\t',header = None)
+    mnase.columns = ['chr','pos','val'] #the mnase data is 1 nt short
+
+    return mnase
 
 def loadyeastRNAseqData():
     #import RNA-seq wigs
@@ -172,6 +210,20 @@ def loadyeastRNAseqData():
     RNAseq_pl = pd.read_csv('./data/GSM5001907_D20-252008_nodup_plus_all.txt',sep = ',',index_col=0)
     downloadGEO('GSM5001907_D20-252008_nodup_minus_all.txt')
     RNAseq_min = pd.read_csv('./data/GSM5001907_D20-252008_nodup_minus_all.txt',sep = ',',index_col=0)
+    RNAseq_me = RNAseq_pl.copy()
+    RNAseq_me['rev'] = RNAseq_min.val_norm
+    RNAseq_me = RNAseq_me.drop(columns = 'value')
+    RNAseq_me.columns = ['chr','pos','fwd','rev']
+    RNAseq_me['merged'] = RNAseq_pl['val_norm'].values.copy()+RNAseq_min['val_norm'].values.copy()
+    
+    return RNAseq_me
+
+def loadyeastRNAseqaFData():
+    #import RNA-seq wigs
+    downloadGEO('GSM5001909_D20-252007_nodup_plus_all.txt')
+    RNAseq_pl = pd.read_csv('./data/GSM5001909_D20-252007_nodup_plus_all.txt',sep = ',',index_col=0)
+    downloadGEO('GSM5001909_D20-252007_nodup_minus_all.txt')
+    RNAseq_min = pd.read_csv('./data/GSM5001909_D20-252007_nodup_minus_all.txt',sep = ',',index_col=0)
     RNAseq_me = RNAseq_pl.copy()
     RNAseq_me['rev'] = RNAseq_min.val_norm
     RNAseq_me = RNAseq_me.drop(columns = 'value')
