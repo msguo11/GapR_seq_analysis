@@ -204,6 +204,12 @@ def downloadMNase(filename = 'GSM3069971_MNase_YPD30_WT-B_166_40U.sgr'):
 
     return mnase
 
+def downloadScc1(filename = 'GSM3668254_Scc1-WT_Tension.calibrated.txt'):
+    downloadGEO(filename)
+    Scc1 = pd.read_csv('./data/GSM3668254_Scc1-WT_Tension.calibrated.txt',sep=',',index_col=0)
+    
+    return Scc1
+
 def loadyeastRNAseqData():
     #import RNA-seq wigs
     downloadGEO('GSM5001907_D20-252008_nodup_plus_all.txt')
@@ -275,6 +281,24 @@ def loadraffnegChIP():
     negIP['smooth'] = negIP.val_norm_no12.rolling(250,center=True).mean()
     
     return negIP
+
+def loadraffINP():
+    downloadGEO('GSM5001903_D20-6528_all_nodup.txt')
+    negINP = pd.read_csv('./data/GSM5001903_D20-6528_all_nodup.txt',sep = ',', index_col=0)
+    normalization_factor = sum(negINP[negINP['chr']!='chrXII'].value.values)/1000000
+    negINP['val_norm_no12'] = negINP.value/normalization_factor
+    negINP['smooth'] = negINP.val_norm_no12.rolling(250,center=True).mean()
+
+    return negINP
+    
+def loadraffaFINP():
+    downloadGEO('GSM5001904_D20-6530_all_nodup.txt')
+    negINPaF = pd.read_csv('./data/GSM5001904_D20-6530_all_nodup.txt',sep = ',', index_col=0)
+    normalization_factor = sum(negINPaF[negINPaF['chr']!='chrXII'].value.values)/1000000
+    negINPaF['val_norm_no12'] = negINPaF.value/normalization_factor
+    negINPaF['smooth'] = negINPaF.val_norm_no12.rolling(250,center=True).mean()
+    
+    return negINPaF
 
 def loadChIPFold(IP,negIP):
     chip_fold = IP.copy()
@@ -396,3 +420,101 @@ def getuSequence(chipRegions, chip_data,genomeSequence, saveFile = False):
     
     return sequence
 
+def extract_CEN(gbk_file, features_to_extract):
+    """function that will load from the gbk file: the start, end, strand and length of gene as well as the name and annotated name/function. 
+    Returns one array and 2 lists """
+    
+    genome_gene=[]
+    genome_gene_name=[]
+    
+    genome_start=[]
+    genome_end=[]
+    genome_strand=[]
+    genome_length=[]
+    for i in range(0,len(gbk_file.features)):
+        isfeature=False
+        for j in range(len(features_to_extract)):
+            if gbk_file.features[i].type == features_to_extract[j]:
+                isfeature=True
+            
+        if isfeature==True:
+            
+            genome_gene.append(gbk_file.features[i].qualifiers['note'][0].split("; ")[0])
+
+            if 'note' in gbk_file.features[i].qualifiers:
+                genome_gene_name.append(gbk_file.features[i].qualifiers['note'][0].split("; ")[-1]) 
+            else:
+                genome_gene_name.append('NA')
+
+            if gbk_file.features[i].location.strand < 0 :
+                genome_start.append(gbk_file.features[i].location.end)
+                genome_end.append(gbk_file.features[i].location.start)
+                genome_strand.append(-1)
+                genome_length.append(abs(gbk_file.features[i].location.end-gbk_file.features[i].location.start)+1)
+            else:
+                genome_start.append(gbk_file.features[i].location.start)
+                genome_end.append(gbk_file.features[i].location.end)
+                genome_strand.append(1)
+                genome_length.append(abs(gbk_file.features[i].location.end-gbk_file.features[i].location.start)+1)
+
+    genome = Genome(genome_gene,genome_gene_name,genome_start,genome_end,genome_strand,genome_length) 
+    
+    return genome   
+
+def extract_ars(gbk_file, features_to_extract):
+    """function that will load from the gbk file: the start, end, strand and length of gene as well as the name and annotated name/function. 
+    Returns one array and 2 lists """
+    
+    genome_gene=[]
+    genome_gene_name=[]
+    
+    genome_start=[]
+    genome_end=[]
+    genome_strand=[]
+    genome_length=[]
+    for i in range(0,len(gbk_file.features)):
+        isfeature=False
+        for j in range(len(features_to_extract)):
+            if gbk_file.features[i].type == features_to_extract[j]:
+                isfeature=True
+            
+        if isfeature==True:
+            
+            genome_gene.append(gbk_file.features[i].qualifiers['note'][0].split("; ")[0])
+
+            if 'note' in gbk_file.features[i].qualifiers:
+                genome_gene_name.append(gbk_file.features[i].qualifiers['note'][0].split("; ")[-1]) 
+            else:
+                genome_gene_name.append('NA')
+
+            if gbk_file.features[i].location.strand < 0 :
+                genome_start.append(gbk_file.features[i].location.end)
+                genome_end.append(gbk_file.features[i].location.start)
+                genome_strand.append(-1)
+                genome_length.append(abs(gbk_file.features[i].location.end-gbk_file.features[i].location.start)+1)
+            else:
+                genome_start.append(gbk_file.features[i].location.start)
+                genome_end.append(gbk_file.features[i].location.end)
+                genome_strand.append(1)
+                genome_length.append(abs(gbk_file.features[i].location.end-gbk_file.features[i].location.start)+1)
+
+    genome = Genome(genome_gene,genome_gene_name,genome_start,genome_end,genome_strand,genome_length) 
+    
+    return genome   
+
+chr_lengths = pd.read_csv(genome_folder + 'scer.genome',sep = '\t',header=None)
+chr_lengths.columns = ['chromosome','length']
+
+def calccumsum(chip):
+    gapR_fold_nolog_cumsum = {}
+    for chrom in chr_lengths.chromosome:
+        gapR_fold_nolog_cumsum[chrom] = np.cumsum(chip[chip.chr==chrom].fold_nolog.values)
+        
+    return gapR_fold_nolog_cumsum
+
+def calccumsumtelos(chip):
+    gapR_fold_nolog_cumsum = {}
+    for chrom in chr_lengths.chromosome:
+        gapR_fold_nolog_cumsum[chrom] = np.cumsum(chip[chip.chr==chrom].fold_nolog_nosmooth.values)
+        
+    return gapR_fold_nolog_cumsum
